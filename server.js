@@ -11,7 +11,8 @@ const io=new Server(server,{cors:{origin:'*'},maxHttpBufferSize:10*1024*1024});
 const PORT=Number(process.env.PORT||3000);
 const CONTROL_PIN=String(process.env.CONTROL_PIN||'').trim();
 const publicDir=path.join(__dirname,'public');
-const uploadDir=path.join('/tmp','sportsai-overlay-uploads');
+const dataDir=process.env.DATA_DIR||path.join(__dirname,'data');
+const uploadDir=path.join(dataDir,'uploads');
 fs.mkdirSync(uploadDir,{recursive:true});
 
 app.use(express.static(publicDir));
@@ -60,5 +61,7 @@ io.on('connection',socket=>{
  socket.on('addImageUrl',(p,ack)=>{if(!guard(socket,ack))return;try{if(state.images.length>=10)throw new Error('Maximum of 10 images');const url=String(p?.url||'').trim();if(!/^https?:\/\//i.test(url))throw new Error('Enter a full http/https URL');const item={id:crypto.randomUUID(),name:safeName(p?.name),imageUrl:url,enabled:true};state.images.push(item);state.currentImageId=item.id;emit();ack?.({ok:true,image:item});}catch(e){ack?.({ok:false,error:e.message});}});
  socket.on('resetTransform',(_,ack)=>{if(!guard(socket,ack))return;Object.assign(state,{x:1030,y:570,width:1050,opacity:.92,rotateZ:-3,skewX:-8,skewY:0,rotateX:0,rotateY:0,scaleX:1,scaleY:1,perspective:1200});emit();ack?.({ok:true});});
 });
+
+require('./broadcast')(io,{dataDir,can,saveDataUrl});
 
 server.listen(PORT,'0.0.0.0',()=>console.log(`SportsAI overlay running on ${PORT}`));
